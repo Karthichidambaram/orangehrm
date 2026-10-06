@@ -1,0 +1,168 @@
+name: Nightly Regression
+
+# =============================================================================
+# TIER 3 of the pipeline: the expensive one.
+#
+# Runs the full suite cross-browser on a schedule, then publishes an Allure
+# report (with trend history) to GitHub Pages.
+#
+# WHY SCHEDULED AND NOT ON EVERY PUSH — three separate reasons:
+#
+#  1. The OrangeHRM demo instance is a shared public sandbox. Firing the full
+#     suite at it on every commit is abusive and a good way to get rate
+#     limited. Once a night is polite.
+#  2. UI tests take minutes. Waiting on them per-push destroys your iteration
+#     speed, and you will start ignoring the result.
+#  3. UI suites are never 100% stable. A red X on every push trains you to
+#     ignore red X's, which costs you the one time it mattered.
+#
+# This file is inert until there are tests and suite XMLs to run. Committing
+# it now is deliberate: the pipeline grows alongside the suite rather than
+# being bolted on at the end.
+# =============================================================================
+
+on:
+  schedule:
+    # 20:30 UTC = 02:00 IST. Results are waiting when you start the day.
+    # NOTE: GitHub disables scheduled workflows after 60 days with no repo
+    # activity. Daily commits keep it alive; a quiet fortnight will not.
+    - cron: '30 20 * * *'
+
+  workflow_dispatch:
+    inputs:
+      suite:
+        description: 'Which suite to run'
+        type: choice
+        options: [smoke, regression]
+        default: regression
+      browser:
+        description: 'Browser (all = matrix)'
+        type: choice
+        options: [all, chrome, firefox]
+        default: all
+
+permissions:
+  contents: read
+
+jobs:
+
+  # ---------------------------------------------------------------------------
+  # One job per browser, in parallel.
+  # ---------------------------------------------------------------------------
+  test:
+    name: ${{ matrix.browser }}
+    runs-on: ubuntu-latest
+
+    strategy:
+      # CRITICAL. The default (fail-fast: true) cancels Firefox the moment
+      # Chrome fails, so you lose half your information exactly when you
+      # most need it — was it a real bug or a Chrome-only quirk?
+      fail-fast: false
+      matrix:
+        browser: [chrome, firefox]
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v7
+
+      - name: Set up JDK 21
+        uses: actions/setup-java@v5
+        with:
+          distribution: temurin
+          java-version: '21'
+          cache: maven
+
+      # ubuntu-latest ships Chrome and Firefox preinstalled, and Selenium
+      # Manager resolves the matching drivers at runtime. Nothing to install.
+      - name: Browser versions
+        run: |
+          google-chrome --version || true
+          firefox --version || true
+
+      - name: Run suite
+        # Skip browsers the user excluded via workflow_dispatch. On a
+        # scheduled run, inputs.browser is empty, so everything runs.
+        if: ${{ github.event.inputs.browser == null || github.event.inputs.browser == 'all' || github.event.inputs.browser == matrix.browser }}
+        run: >
+          mvn -B -ntp test
+          -P${{ github.event.inputs.suite || 'regression' }}
+          -Dbrowser=${{ matrix.browser }}
+          -Dheadless=true
+          -Denv=qa
+
+      # if: always() so results upload even when tests fail — which is the
+      # case where you need the report most.
+      - name: Upload Allure results
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: allure-results-${{ matrix.browser }}
+          path: target/allure-results
+          retention-days: 14
+          if-no-files-found: ignore
+
+      - name: Upload failure screenshots
+        if: failure()
+        uses: actions/upload-artifact@v4
+        with:
+          name: screenshots-${{ matrix.browser }}
+          path: target/screenshots
+          retention-days: 14
+          if-no-files-found: ignore
+
+  # ---------------------------------------------------------------------------
+  # Merge both browsers' results into one report and publish it.
+  # ---------------------------------------------------------------------------
+  report:
+    name: Publish Allure report
+    needs: test
+    # always() — the report job must run even when the test job failed.
+    # Without this, a failing suite produces no report at all.
+    if: always()
+    runs-on: ubuntu-latest
+
+    permissions:
+      contents: write        # needed to push to the gh-pages branch
+
+    steps:
+      # Pull the existing published reports first. This is what gives Allure
+      # its trend graphs: history lives in the previous report, not in the
+      # results. Skip this and every report looks like run #1 forever.
+      - name: Checkout gh-pages
+        uses: actions/checkout@v7
+        continue-on-error: true      # branch does not exist on the first run
+        with:
+          ref: gh-pages
+          path: gh-pages
+
+      - name: Download all results
+        uses: actions/download-artifact@v4
+        with:
+          pattern: allure-results-*
+          path: allure-results
+          # Flattens both browsers into one folder so they appear in a
+          # single report rather than two disconnected ones.
+          merge-multiple: true
+
+      # Third-party actions. For a portfolio repo the floating tags below are
+      # fine; in a real org, pin them to a commit SHA so a compromised tag
+      # cannot inject code into your pipeline.
+      - name: Build report
+        uses: simple-elf/allure-report-action@master
+        with:
+          allure_results: allure-results
+          allure_history: allure-history
+          gh_pages: gh-pages
+          keep_reports: 30
+
+      - name: Deploy to GitHub Pages
+        uses: peaceiris/actions-gh-pages@v4
+        with:
+          github_token: ${{ secrets.GITHUB_TOKEN }}
+          publish_branch: gh-pages
+          publish_dir: allure-history
+
+      - name: Report URL
+        run: |
+          echo "### Allure report" >> $GITHUB_STEP_SUMMARY
+          echo "https://${{ github.repository_owner }}.github.io/${{ github.event.repository.name }}/" >> $GITHUB_STEP_SUMMARY
