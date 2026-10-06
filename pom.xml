@@ -42,7 +42,7 @@
         <aspectj.version>1.9.22.1</aspectj.version>
 
         <!-- Logging -->
-        <log4j.version>2.24.3</log4j.version>
+        <log4j.version>2.26.1</log4j.version>
 
         <!-- Test data -->
         <jackson.version>2.18.2</jackson.version>
