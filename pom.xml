@@ -46,7 +46,7 @@
 
         <!-- Test data -->
         <jackson.version>2.18.2</jackson.version>
-        <poi.version>5.4.0</poi.version>
+        <poi.version>5.5.1</poi.version>
         <datafaker.version>2.4.2</datafaker.version>
 
         <!-- Utilities / assertions -->
