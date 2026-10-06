@@ -33,7 +33,7 @@
         <project.build.sourceEncoding>UTF-8</project.build.sourceEncoding>
 
         <!-- Core -->
-        <selenium.version>4.46.0</selenium.version>
+        <selenium.version>4.50.0</selenium.version>
         <testng.version>7.12.0</testng.version>
 
         <!-- Reporting. allure.version drives the BOM, which then drives every
