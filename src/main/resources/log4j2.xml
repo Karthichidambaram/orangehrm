@@ -1,0 +1,29 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!--
+  %t (thread name) is in the pattern on purpose. Under parallel execution an
+  unlabelled log line is useless - you cannot tell which of six concurrent
+  tests produced it. With %t the log is readable; without it, it is noise.
+-->
+<Configuration status="WARN">
+    <Properties>
+        <Property name="PATTERN">%d{HH:mm:ss.SSS} [%t] %-5level %logger{1} - %msg%n</Property>
+    </Properties>
+
+    <Appenders>
+        <Console name="Console" target="SYSTEM_OUT">
+            <PatternLayout pattern="${PATTERN}"/>
+        </Console>
+        <File name="File" fileName="target/logs/execution.log" append="false">
+            <PatternLayout pattern="${PATTERN}"/>
+        </File>
+    </Appenders>
+
+    <Loggers>
+        <!-- Selenium is extremely chatty at INFO; it drowns out your own logs. -->
+        <Logger name="org.openqa.selenium" level="WARN"/>
+        <Root level="INFO">
+            <AppenderRef ref="Console"/>
+            <AppenderRef ref="File"/>
+        </Root>
+    </Loggers>
+</Configuration>

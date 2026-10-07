@@ -1,14 +1,14 @@
 # OrangeHRM Selenium Regression Suite
 
-<!-- Replace YOUR-USERNAME throughout this file. -->
-[![CI](https://github.com/YOUR-USERNAME/orangehrm-selenium-suite/actions/workflows/ci.yml/badge.svg)](https://github.com/YOUR-USERNAME/orangehrm-selenium-suite/actions/workflows/ci.yml)
-[![Nightly Regression](https://github.com/YOUR-USERNAME/orangehrm-selenium-suite/actions/workflows/nightly-regression.yml/badge.svg)](https://github.com/YOUR-USERNAME/orangehrm-selenium-suite/actions/workflows/nightly-regression.yml)
+<!-- Replace Karthichidambaram throughout this file. -->
+[![CI](https://github.com/Karthichidambaram/orangehrm/actions/workflows/ci.yml/badge.svg)](https://github.com/Karthichidambaram/orangehrm/actions/workflows/ci.yml)
+[![Nightly Regression](https://github.com/Karthichidambaram/orangehrm/actions/workflows/nightly-regression.yml/badge.svg)](https://github.com/Karthichidambaram/orangehrm/actions/workflows/nightly-regression.yml)
 
 UI regression suite for [OrangeHRM](https://opensource-demo.orangehrmlive.com),
 built as a study in test framework architecture rather than as a collection of
 scripts.
 
-**[Latest Allure report →](https://YOUR-USERNAME.github.io/orangehrm-selenium-suite/)**
+**[Latest Allure report →](https://Karthichidambaram.github.io/orangehrm/)**
 
 ---
 
