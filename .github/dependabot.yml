@@ -1,0 +1,56 @@
+version: 2
+
+# =============================================================================
+# Dependabot opens PRs when dependencies go stale. Two reasons this is worth
+# having on a test automation repo specifically:
+#
+#  1. Selenium moves fast and browser releases break old versions. Being two
+#     months behind on Selenium is a real source of mystery failures.
+#  2. It solves the "pinned version is now wrong" problem structurally. Rather
+#     than me guessing the right action version today, Dependabot corrects it
+#     for you in a PR — and your CI gate tells you whether the bump is safe.
+#
+# The PR history also happens to be good evidence of maintenance discipline.
+# =============================================================================
+
+updates:
+
+  # ---------------------------------------------------------------------------
+  # Maven dependencies
+  # ---------------------------------------------------------------------------
+  - package-ecosystem: maven
+    directory: "/"
+    schedule:
+      interval: weekly
+      day: monday
+      time: "06:00"
+      timezone: Asia/Kolkata
+    open-pull-requests-limit: 5
+    labels: [dependencies, maven]
+    commit-message:
+      prefix: "chore(deps)"
+    groups:
+      # Allure artifacts must move together — mixing versions across
+      # allure-testng and allure-java-commons produces broken reports.
+      # Grouping means one PR instead of six that must be merged in order.
+      allure:
+        patterns: ["io.qameta.allure:*"]
+      selenium:
+        patterns: ["org.seleniumhq.selenium:*"]
+      logging:
+        patterns: ["org.apache.logging.log4j:*"]
+
+  # ---------------------------------------------------------------------------
+  # GitHub Actions versions
+  # ---------------------------------------------------------------------------
+  - package-ecosystem: github-actions
+    directory: "/"
+    schedule:
+      interval: weekly
+      day: monday
+    labels: [dependencies, ci]
+    commit-message:
+      prefix: "ci(deps)"
+    groups:
+      actions:
+        patterns: ["*"]

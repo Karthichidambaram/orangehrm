@@ -1,0 +1,337 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<project xmlns="http://maven.apache.org/POM/4.0.0"
+         xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+         xsi:schemaLocation="http://maven.apache.org/POM/4.0.0
+                             http://maven.apache.org/xsd/maven-4.0.0.xsd">
+
+    <modelVersion>4.0.0</modelVersion>
+
+    <groupId>com.orangehrm</groupId>
+    <artifactId>orangehrm-selenium-suite</artifactId>
+    <version>1.0.0-SNAPSHOT</version>
+    <packaging>jar</packaging>
+
+    <name>OrangeHRM Selenium Regression Suite</name>
+    <description>
+        UI regression suite for OrangeHRM. Page Object Model, ThreadLocal driver
+        factory, data-driven TestNG, screenshot-on-failure listeners, retry
+        analyzer, Allure reporting, parallel cross-browser execution.
+    </description>
+
+    <!-- =====================================================================
+         VERSIONS
+         Every version lives here and nowhere else. When a dependency appears
+         in two places with two versions you get a classpath conflict that
+         shows up as a NoSuchMethodError at runtime, not at build time.
+
+         Check for updates with:
+           mvn versions:display-dependency-updates
+           mvn versions:display-plugin-updates
+         ===================================================================== -->
+    <properties>
+        <maven.compiler.release>21</maven.compiler.release>
+        <project.build.sourceEncoding>UTF-8</project.build.sourceEncoding>
+
+        <!-- Core -->
+        <selenium.version>4.46.0</selenium.version>
+        <testng.version>7.12.0</testng.version>
+
+        <!-- Reporting. allure.version drives the BOM, which then drives every
+             allure-* artifact so they can never drift apart. -->
+        <allure.version>2.35.5</allure.version>
+        <aspectj.version>1.9.22.1</aspectj.version>
+
+        <!-- Logging -->
+        <log4j.version>2.24.3</log4j.version>
+
+        <!-- Test data -->
+        <jackson.version>2.18.2</jackson.version>
+        <poi.version>5.4.0</poi.version>
+        <datafaker.version>2.4.2</datafaker.version>
+
+        <!-- Utilities / assertions -->
+        <commons-lang3.version>3.17.0</commons-lang3.version>
+        <assertj.version>3.26.3</assertj.version>
+
+        <!-- Plugins -->
+        <compiler-plugin.version>3.14.0</compiler-plugin.version>
+        <surefire-plugin.version>3.5.6</surefire-plugin.version>
+        <allure-maven.version>2.15.2</allure-maven.version>
+
+        <!-- =================================================================
+             RUNTIME SWITCHES
+             Defaults live here; the command line wins. This is what lets one
+             build definition serve local debugging and CI without edits:
+               mvn test
+               mvn test -Dbrowser=firefox -Dheadless=true
+               mvn test -DsuiteFile=src/test/resources/suites/smoke.xml
+             ================================================================= -->
+        <suiteFile>src/test/resources/suites/regression.xml</suiteFile>
+        <browser>chrome</browser>
+        <headless>false</headless>
+        <env>qa</env>
+        <runMode>local</runMode>
+        <threadCount>4</threadCount>
+    </properties>
+
+    <!-- =====================================================================
+         DEPENDENCY MANAGEMENT
+         The Allure BOM is imported rather than pinning each allure-* artifact.
+         allure-testng pulls in allure-java-commons, allure-model and others;
+         letting the BOM align them removes a whole class of "works on my
+         machine" report bugs.
+         ===================================================================== -->
+    <dependencyManagement>
+        <dependencies>
+            <dependency>
+                <groupId>io.qameta.allure</groupId>
+                <artifactId>allure-bom</artifactId>
+                <version>${allure.version}</version>
+                <type>pom</type>
+                <scope>import</scope>
+            </dependency>
+        </dependencies>
+    </dependencyManagement>
+
+    <dependencies>
+
+        <!-- ============================================
+             Selenium. No WebDriverManager: Selenium Manager has been built
+             into the Java bindings since 4.6 and resolves browser drivers
+             itself. One less dependency that can break on a Chrome release.
+             Compile scope (not test) because the framework — driver factory,
+             page objects, waits — lives in src/main/java.
+             ============================================ -->
+        <dependency>
+            <groupId>org.seleniumhq.selenium</groupId>
+            <artifactId>selenium-java</artifactId>
+            <version>${selenium.version}</version>
+        </dependency>
+
+        <!-- ============================================
+             TestNG at compile scope, deliberately. BaseTest, the listeners
+             and the retry analyzer implement TestNG interfaces and live in
+             src/main/java so they ship with the framework jar. Test scope
+             here would break compilation of src/main.
+             ============================================ -->
+        <dependency>
+            <groupId>org.testng</groupId>
+            <artifactId>testng</artifactId>
+            <version>${testng.version}</version>
+        </dependency>
+
+        <!-- ============================================
+             Allure. allure-testng registers its own TestNG listener via
+             ServiceLoader, so there is nothing to wire up in testng.xml.
+             ============================================ -->
+        <dependency>
+            <groupId>io.qameta.allure</groupId>
+            <artifactId>allure-testng</artifactId>
+        </dependency>
+
+        <!-- ============================================
+             AspectJ weaver. Allure's @Step and @Attachment are implemented
+             with AspectJ load-time weaving. Without the -javaagent in
+             surefire's argLine below, the annotations compile fine, tests
+             pass, and the report simply has no steps in it. Single most
+             common Allure setup mistake.
+             ============================================ -->
+        <dependency>
+            <groupId>org.aspectj</groupId>
+            <artifactId>aspectjweaver</artifactId>
+            <version>${aspectj.version}</version>
+        </dependency>
+
+        <!-- ============================================
+             Logging. Selenium logs through SLF4J; log4j-slf4j2-impl is the
+             bridge that routes it into our Log4j2 config. Omit the bridge
+             and you get the "Failed to load class StaticLoggerBinder"
+             warning plus silent Selenium logs.
+             ============================================ -->
+        <dependency>
+            <groupId>org.apache.logging.log4j</groupId>
+            <artifactId>log4j-api</artifactId>
+            <version>${log4j.version}</version>
+        </dependency>
+        <dependency>
+            <groupId>org.apache.logging.log4j</groupId>
+            <artifactId>log4j-core</artifactId>
+            <version>${log4j.version}</version>
+        </dependency>
+        <dependency>
+            <groupId>org.apache.logging.log4j</groupId>
+            <artifactId>log4j-slf4j2-impl</artifactId>
+            <version>${log4j.version}</version>
+        </dependency>
+
+        <!-- ============================================
+             Test data sources. JSON is the default (readable in diffs,
+             maps cleanly onto records); Excel is here because HR test data
+             frequently arrives from business analysts as .xlsx.
+             ============================================ -->
+        <dependency>
+            <groupId>com.fasterxml.jackson.core</groupId>
+            <artifactId>jackson-databind</artifactId>
+            <version>${jackson.version}</version>
+        </dependency>
+        <dependency>
+            <groupId>org.apache.poi</groupId>
+            <artifactId>poi-ooxml</artifactId>
+            <version>${poi.version}</version>
+        </dependency>
+
+        <!-- ============================================
+             Datafaker (maintained successor to JavaFaker). The OrangeHRM
+             demo instance is shared and public: every employee we create
+             needs a unique name or tests collide with each other and with
+             other people using the sandbox.
+             ============================================ -->
+        <dependency>
+            <groupId>net.datafaker</groupId>
+            <artifactId>datafaker</artifactId>
+            <version>${datafaker.version}</version>
+        </dependency>
+
+        <dependency>
+            <groupId>org.apache.commons</groupId>
+            <artifactId>commons-lang3</artifactId>
+            <version>${commons-lang3.version}</version>
+        </dependency>
+
+        <!-- AssertJ for readable chained assertions. TestNG's SoftAssert
+             stays available for multi-field form verification. -->
+        <dependency>
+            <groupId>org.assertj</groupId>
+            <artifactId>assertj-core</artifactId>
+            <version>${assertj.version}</version>
+        </dependency>
+
+    </dependencies>
+
+    <build>
+        <plugins>
+
+            <plugin>
+                <groupId>org.apache.maven.plugins</groupId>
+                <artifactId>maven-compiler-plugin</artifactId>
+                <version>${compiler-plugin.version}</version>
+                <configuration>
+                    <!-- `release` rather than source+target: it also checks
+                         that we only call APIs present in Java 21. -->
+                    <release>${maven.compiler.release}</release>
+                    <compilerArgs>
+                        <!-- Real parameter names in stack traces and in
+                             Allure step arguments. -->
+                        <arg>-parameters</arg>
+                    </compilerArgs>
+                </configuration>
+            </plugin>
+
+            <plugin>
+                <groupId>org.apache.maven.plugins</groupId>
+                <artifactId>maven-surefire-plugin</artifactId>
+                <version>${surefire-plugin.version}</version>
+                <configuration>
+
+                    <!-- Which suite runs. Note: passing -Dtest=SomeTest makes
+                         surefire ignore suiteXmlFiles entirely, which is
+                         usually what you want when debugging one class. -->
+                    <suiteXmlFiles>
+                        <suiteXmlFile>${suiteFile}</suiteXmlFile>
+                    </suiteXmlFiles>
+
+                    <!-- The AspectJ agent that makes @Step/@Attachment work.
+                         If you later add JaCoCo, change this to
+                         @{argLine} -javaagent:... so the two agents coexist. -->
+                    <argLine>
+                        -javaagent:"${settings.localRepository}/org/aspectj/aspectjweaver/${aspectj.version}/aspectjweaver-${aspectj.version}.jar"
+                    </argLine>
+
+                    <!-- Forwarded into the JVM so ConfigReader can let
+                         -D overrides beat config.properties. -->
+                    <systemPropertyVariables>
+                        <browser>${browser}</browser>
+                        <headless>${headless}</headless>
+                        <env>${env}</env>
+                        <runMode>${runMode}</runMode>
+                        <allure.results.directory>${project.build.directory}/allure-results</allure.results.directory>
+                    </systemPropertyVariables>
+
+                    <properties>
+                        <!-- Kill TestNG's built-in HTML/XML reporters. They
+                             cost time, and Allure is the single source of
+                             truth for results. -->
+                        <property>
+                            <name>usedefaultlisteners</name>
+                            <value>false</value>
+                        </property>
+                    </properties>
+
+                    <!-- Parallelism is configured in testng.xml, not here.
+                         Surefire has its own parallel/threadCount params that
+                         also feed TestNG; setting both gives you two places
+                         to look when thread counts surprise you. One source
+                         of truth: the suite file. -->
+
+                </configuration>
+            </plugin>
+
+            <!-- Enables `mvn allure:report` (static HTML into target/site)
+                 and `mvn allure:serve` (report + local web server). -->
+            <plugin>
+                <groupId>io.qameta.allure</groupId>
+                <artifactId>allure-maven</artifactId>
+                <version>${allure-maven.version}</version>
+                <configuration>
+                    <reportVersion>${allure.version}</reportVersion>
+                    <resultsDirectory>${project.build.directory}/allure-results</resultsDirectory>
+                </configuration>
+            </plugin>
+
+        </plugins>
+    </build>
+
+    <!-- =====================================================================
+         PROFILES
+         Shorthands, not magic. Each one only sets properties that could
+         equally be passed with -D. Kept so CI jobs read as
+         `mvn test -Psmoke` instead of a wall of -D flags.
+         ===================================================================== -->
+    <profiles>
+
+        <profile>
+            <id>smoke</id>
+            <properties>
+                <suiteFile>src/test/resources/suites/smoke.xml</suiteFile>
+            </properties>
+        </profile>
+
+        <profile>
+            <id>regression</id>
+            <properties>
+                <suiteFile>src/test/resources/suites/regression.xml</suiteFile>
+            </properties>
+        </profile>
+
+        <!-- Cross-browser lives in its own suite file because the browser is
+             a per-<test> parameter there, not a global -D value. -->
+        <profile>
+            <id>cross-browser</id>
+            <properties>
+                <suiteFile>src/test/resources/suites/cross-browser.xml</suiteFile>
+            </properties>
+        </profile>
+
+        <!-- CI: headless, remote grid, more threads. -->
+        <profile>
+            <id>ci</id>
+            <properties>
+                <headless>true</headless>
+                <runMode>remote</runMode>
+                <threadCount>6</threadCount>
+            </properties>
+        </profile>
+
+    </profiles>
+
+</project>

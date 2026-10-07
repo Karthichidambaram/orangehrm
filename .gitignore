@@ -1,0 +1,46 @@
+# --- Maven ---
+target/
+pom.xml.versionsBackup
+
+# --- Allure ---
+# Results are configured into target/, but catch root-level output in case
+# allure.properties is ever missing or overridden.
+/allure-results/
+/allure-report/
+.allure/
+
+# --- TestNG ---
+test-output/
+
+# --- Logs & failure artefacts ---
+logs/
+*.log
+screenshots/
+
+# --- Local secrets / machine-specific overrides ---
+# Never commit real environment credentials. config.properties holds only
+# the public demo-site values.
+config-local.properties
+.env
+
+# --- IDEs ---
+.idea/
+*.iml
+*.ipr
+*.iws
+.vscode/
+.settings/
+.classpath
+.project
+
+# --- OS ---
+.DS_Store
+Thumbs.db
+
+# --- Selenium ---
+# Selenium Manager caches drivers in ~/.cache/selenium, but older setups
+# and WebDriverManager leftovers can drop binaries in-project.
+*.exe
+geckodriver*
+chromedriver*
+msedgedriver*
