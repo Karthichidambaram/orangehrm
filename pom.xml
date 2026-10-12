@@ -38,7 +38,7 @@
 
         <!-- Reporting. allure.version drives the BOM, which then drives every
              allure-* artifact so they can never drift apart. -->
-        <allure.version>2.35.5</allure.version>
+        <allure.version>3.0.0</allure.version>
         <aspectj.version>1.9.22.1</aspectj.version>
 
         <!-- Logging -->
@@ -56,7 +56,7 @@
         <!-- Plugins -->
         <compiler-plugin.version>3.14.0</compiler-plugin.version>
         <surefire-plugin.version>3.5.6</surefire-plugin.version>
-        <allure-maven.version>2.15.2</allure-maven.version>
+        <allure-maven.version>3.1.0</allure-maven.version>
 
         <!-- =================================================================
              RUNTIME SWITCHES
