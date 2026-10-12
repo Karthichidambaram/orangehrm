@@ -39,7 +39,7 @@
         <!-- Reporting. allure.version drives the BOM, which then drives every
              allure-* artifact so they can never drift apart. -->
         <allure.version>2.35.5</allure.version>
-        <aspectj.version>1.9.22.1</aspectj.version>
+        <aspectj.version>1.9.25.1</aspectj.version>
 
         <!-- Logging -->
         <log4j.version>2.24.3</log4j.version>
